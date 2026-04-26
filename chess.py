@@ -25,12 +25,12 @@ def isPathClear(board, start_coords, end_coords):
     dist_column = 0 if column_start == column_end else (1 if column_end > column_start else -1)
     
     curr_r, curr_c = row_start + dist_row, column_start + dist_column
-    while (curr_r, curr_c) != (row_start, column_end):
+    while (curr_r, curr_c) != (row_end, column_end):
         pos_key = f"{'ABCDEFGH'[curr_c]}{8 - curr_r}"
-        if board.get(pos_key, "") != "":
+        if board.get(pos_key, ".") != ".":
             return False
-        curr_row += dist_row
-        curr_column += dist_column
+        curr_r += dist_row
+        curr_c += dist_column
     return True
 
 def canMove(start_pos, end_pos):
@@ -48,13 +48,12 @@ def canMove(start_pos, end_pos):
         return False
     
     piece = piece.upper()
-
     match piece:
         case "♙":
             direction = -1
             start_row_pos = 6
             if dist_column == 0 and (row_end - row_start) == direction:
-                return target_piece == "."
+                return target_piece == ""
             
             if dist_column == 0 and row_start == start_row_pos and (row_end - row_start) == 2 * direction:
                 mid_row = row_start + direction
@@ -65,27 +64,31 @@ def canMove(start_pos, end_pos):
                 return target_piece != ""
             
         case "♕":
-            if dist_row == dist_column:
+            if row_start == row_end or column_start == column_end or dist_row == dist_column:
                 return isPathClear(chess_board, (row_start, column_start), (row_end, column_end))
         case "♔":
             return dist_row <= 1 and dist_column <= 1
         case "♘":
             return (dist_row == 1 and dist_column == 2) or (dist_row == 2 and dist_column == 1)
         case "♗":
-            return isPathClear(chess_board, (row_start, column_start), (row_end, column_end))
+            if dist_row == dist_column:
+                return isPathClear(chess_board, (row_start, column_start), (row_end, column_end))
         case "♖":
-            return isPathClear(chess_board, (row_start, column_start), (row_end, column_end))
-            
+            if row_start == row_end or column_start == column_end:
+                return isPathClear(chess_board, (row_start, column_start), (row_end, column_end))
+    
+    return False
+
 def makeMove(start_pos, end_pos):
     if canMove(start_pos, end_pos):
         chess_board[end_pos] = chess_board[start_pos]
-        chess_board[start_pos] = "."
+        chess_board[start_pos] = ""
     else:
         print("!-----Can't move-----!")
 
 
 def ChessBoardPrint():
-    board_numbers = "87614321"
+    board_numbers = "87654321"
     board_latters = "ABCDEFGH"
 
     print("   _________________")
