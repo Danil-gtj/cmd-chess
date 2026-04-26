@@ -1,2 +1,18 @@
 # cmd-chess
-Chess created on python for playing from terminal!
+__
+___ 
+        /   \/   \/   \
+       | v   v   v   v |
+        \  \   .   /  /
+         \__\_/_\_/__/
+         |           |
+         |( ) ( ) ( )|
+         |___________|
+              ___
+             (   )
+              ) (
+             /   \
+            (     )
+             )   (
+            /     \
+           (_______)
