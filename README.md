@@ -15,3 +15,6 @@
             /     \
            (_______)
 ___
+#Instalation
+1. pip install cmd-game-chess
+2. python -m cmd_chess.chess 
