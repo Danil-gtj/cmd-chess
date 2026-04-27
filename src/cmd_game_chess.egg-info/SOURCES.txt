@@ -1,0 +1,10 @@
+LICENSE
+README.md
+pyproject.toml
+src/cmd_chess/chess.py
+src/cmd_chess/save.py
+src/cmd_game_chess.egg-info/PKG-INFO
+src/cmd_game_chess.egg-info/SOURCES.txt
+src/cmd_game_chess.egg-info/dependency_links.txt
+src/cmd_game_chess.egg-info/entry_points.txt
+src/cmd_game_chess.egg-info/top_level.txt
