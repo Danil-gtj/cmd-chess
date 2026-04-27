@@ -1,2 +1,0 @@
-[console_scripts]
-play-chess = cmd_chess.chess:MainGame
