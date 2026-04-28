@@ -1,4 +1,4 @@
-from . import save
+import save
 import random
 import time
 import copy
