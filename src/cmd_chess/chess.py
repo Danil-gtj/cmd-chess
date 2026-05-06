@@ -1,7 +1,6 @@
-import save
+from cmd_chess import save 
 import random
 import time
-import copy
 import os 
 import sys
 
@@ -23,7 +22,6 @@ ascii_pieces = {
 
 USE_ASCII = sys.stdout.encoding.lower() != 'utf-8'
 
-# Movement
 def getCoords(pos):
     files = "ABCDEFGH"
     column = files.index(pos[0].upper())
@@ -46,9 +44,8 @@ def isPathClear(board, start_coords, end_coords):
         curr_c += dist_column
     return True
 
-
-def canMove(start_pos, end_pos):
-    piece = chess_board.get(start_pos, "")
+def canMove(board, start_pos, end_pos):
+    piece = board.get(start_pos, "")
     if not piece: return False
 
     row_start, column_start = getCoords(start_pos)
@@ -57,9 +54,8 @@ def canMove(start_pos, end_pos):
     dist_row = abs(row_start - row_end)
     dist_column = abs(column_start - column_end)
 
-    target_piece = chess_board.get(end_pos, "")
+    target_piece = board.get(end_pos, "")
     white_pieces = "♙♘♗♖♕♔"
-    black_pieces = "♟♞♝♜♛♚"
 
     if target_piece:
         is_piece_white = piece in white_pieces
@@ -75,43 +71,27 @@ def canMove(start_pos, end_pos):
             
             if dist_column == 0 and (row_end - row_start) == direction:
                 return target_piece == ""
-            
             if dist_column == 0 and row_start == start_row_pos and (row_end - row_start) == 2 * direction:
                 mid_row = row_start + direction
                 mid_pos = f"{'ABCDEFGH'[column_start]}{8 - mid_row}"
-                return target_piece == "" and chess_board.get(mid_pos, "") == "" 
-            
+                return target_piece == "" and board.get(mid_pos, "") == "" 
             if dist_column == 1 and (row_end - row_start) == direction:
                 return target_piece != ""
-            
         case "♕" | "♛":
             if row_start == row_end or column_start == column_end or dist_row == dist_column:
-                return isPathClear(chess_board, (row_start, column_start), (row_end, column_end))
+                return isPathClear(board, (row_start, column_start), (row_end, column_end))
         case "♔" | "♚":
             return dist_row <= 1 and dist_column <= 1
         case "♘" | "♞":
             return (dist_row == 1 and dist_column == 2) or (dist_row == 2 and dist_column == 1)
         case "♗" | "♝":
             if dist_row == dist_column:
-                return isPathClear(chess_board, (row_start, column_start), (row_end, column_end))
+                return isPathClear(board, (row_start, column_start), (row_end, column_end))
         case "♖" | "♜":
             if row_start == row_end or column_start == column_end:
-                return isPathClear(chess_board, (row_start, column_start), (row_end, column_end))
-    
+                return isPathClear(board, (row_start, column_start), (row_end, column_end))
     return False
 
-def makeMove(start_pos, end_pos):
-    if canMove(start_pos, end_pos):
-        chess_board[end_pos] = chess_board[start_pos]
-        chess_board[start_pos] = ""
-
-        ChessBoardPrint()
-
-        print("AI thinks...")
-        time.sleep(2)
-        aiMove()
-    else:
-        print("!-----Can't move-----!")
 
 def findKing(board, color):
     king_symbol = "♔" if color == 'white' else "♚"
@@ -122,11 +102,9 @@ def findKing(board, color):
 
 def is_check(board, color):
     king_pos = findKing(board, color)
-    if not king_pos:
-        return False 
+    if not king_pos: return False 
 
     enemy_color = 'black' if color == 'white' else 'white'
-
     for pos, piece in board.items():
         if piece == "": continue
         
@@ -134,15 +112,38 @@ def is_check(board, color):
                    (enemy_color == 'white' and piece in "♙♘♗♖♕♔")
         
         if is_enemy:
-            if canMove(pos, king_pos):
+            if canMove(board, pos, king_pos):
                 return True
     return False
 
-def check_game_status(board, color):
-    if not findKing(board, color):
-        return "LOSE"
+def is_safe_move(board, start_pos, end_pos, color):
+    if not canMove(board, start_pos, end_pos):
+        return False
+    
+    temp_board = board.copy()
+    temp_board[end_pos] = temp_board[start_pos]
+    temp_board[start_pos] = ""
+    
+    return not is_check(temp_board, color)
 
-    legal_moves = getAllLegalMoves(color)
+def getAllLegalMoves(board, color):
+    moves = []
+    for start_pos, piece in board.items():
+        if piece == "": continue
+        
+        is_black = piece in "♟♞♝♜♛♚"
+        is_white = piece in "♙♘♗♖♕♔"
+        
+        if (color == 'black' and is_black) or (color == 'white' and is_white):
+            for r in range(1, 9):
+                for f in "ABCDEFGH":
+                    end_pos = f"{f}{r}"
+                    if is_safe_move(board, start_pos, end_pos, color):
+                        moves.append((start_pos, end_pos))
+    return moves
+
+def check_game_status(board, color):
+    legal_moves = getAllLegalMoves(board, color)
     
     if not legal_moves:
         if is_check(board, color):
@@ -151,7 +152,6 @@ def check_game_status(board, color):
             return "STALEMATE" 
     return "IN_PROGRESS"
 
-# AI 
 def evaluateBoard(board):
     weights = {'♙': 100, '♘': 300, '♗': 300, '♖': 500, '♕': 900, '♔': 9000,
                '♟': -100, '♞': -300, '♝': -300, '♜': -500, '♛': -900, '♚': -9000}
@@ -163,50 +163,29 @@ def evaluateBoard(board):
     for pos, piece in board.items():
         if piece:
             piece_val = weights.get(piece, 0)
-            
             pos_bonus = 0
             if piece not in ["♔", "♚", "♖", "♜"]: 
-                if pos in center_squares: 
-                    pos_bonus = 15
-                elif pos in middle_squares: 
-                    pos_bonus = 5
+                if pos in center_squares: pos_bonus = 15
+                elif pos in middle_squares: pos_bonus = 5
 
             if piece in "♟♞♝♜♛♚":
                 score += (piece_val - pos_bonus)
             else:
                 score += (piece_val + pos_bonus)
-                
     return score
 
-def getAllLegalMoves(color='black'):
-    moves = []
-    for start_pos, piece in chess_board.items():
-        if piece == "": continue
-        
-        is_black = piece.islower() or piece in "♟♞♝♜♛♚"
-        
-        if (color == 'black' and is_black) or (color == 'white' and not is_black):
-            for r in range(1, 9):
-                for f in "ABCDEFGH":
-                    end_pos = f"{f}{r}"
-                    if canMove(start_pos, end_pos):
-                        moves.append((start_pos, end_pos))
-    return moves
-
 def aiMove():
-    legal_moves = getAllLegalMoves(color='black')
+    legal_moves = getAllLegalMoves(chess_board, 'black')
     
     if not legal_moves:
-        print("ИИ сдается! (Мат или пат)")
-        return False
+        return False 
 
     best_moves = []
     best_value = 99999 
 
     for move in legal_moves:
         start, end = move
-        
-        temp_board = copy.deepcopy(chess_board)
+        temp_board = chess_board.copy()
         temp_board[end] = temp_board[start]
         temp_board[start] = ""
         
@@ -215,24 +194,20 @@ def aiMove():
         if board_value < best_value:
             best_value = board_value
             best_moves = [move] 
-            
         elif board_value == best_value:
             best_moves.append(move) 
 
     if best_moves:
-        best_move = random.choice(best_moves)
-        s, e = best_move
-        print(f"ИИ сходил: {s} -> {e}")
+        s, e = random.choice(best_moves)
+        print(f"AI move: {s} -> {e}")
         chess_board[e] = chess_board[s]
         chess_board[s] = ""
         return True
 
-# Main functions
+
 def ChessBoardPrint():
     board_numbers = "87654321"
     board_latters = "ABCDEFGH"
-
-
 
     print("   _________________")
     for number in board_numbers:
@@ -244,39 +219,61 @@ def ChessBoardPrint():
             if piece == "":
                 display_piece = "."
             else:
-                if USE_ASCII:
-                    display_piece = ascii_pieces.get(piece, piece)
-                else:
-                    display_piece = piece
-            
+                display_piece = ascii_pieces.get(piece, piece) if USE_ASCII else piece
             row_str += f" {display_piece}"
         print (f"{row_str} |")
     print("  |-----------------|")
     print("  | A B C D E F G H |")
     print("  |_________________|")
 
-    
 def StartPlay():
     while True:
         ChessBoardPrint()
-        print("What figure will you move?")
-        start_pos = input()
-
-        if start_pos.lower() == "exit":
+        
+        status = check_game_status(chess_board, 'white')
+        if status == "CHECKMATE":
+            print("\n*** MATE! You Lose! ***\n")
             break
+        elif status == "STALEMATE":
+            print("\n*** CHECK! Draw! ***\n")
+            break
+            
+        if is_check(chess_board, 'white'):
+            print("Warning: YOU KING IS IN CHECK!")
 
-        print("Where will you move you figure?")
-        end_pos = input()
+        print("Witch figure move? (or exit)")
+        start_pos = input().strip().upper()
+        if start_pos == "EXIT": break
 
-        NextStepForPlayer(start_pos, end_pos)
+        print("Where it move?")
+        end_pos = input().strip().upper()
 
-def NextStepForPlayer(start_pos, end_pos):
-    print(21*"-")
-    makeMove(start_pos, end_pos)
+        print(21*"-")
+        
+        piece = chess_board.get(start_pos, "")
+        if piece in "♙♘♗♖♕♔" and is_safe_move(chess_board, start_pos, end_pos, 'white'):
+            chess_board[end_pos] = chess_board[start_pos]
+            chess_board[start_pos] = ""
+            
+            ChessBoardPrint()
+            
+            ai_status = check_game_status(chess_board, 'black')
+            if ai_status == "CHECKMATE":
+                print("\n*** MATE! AI Won! ***\n")
+                break
+            elif ai_status == "STALEMATE":
+                print("\n*** CHECK! Draw! ***\n")
+                break
+                
+            print("AI thinks...")
+            time.sleep(1)
+            aiMove()
+        else:
+            print("!----- Illigal move (or your king under attack! ) -----!")
+            time.sleep(1)
 
 def MainGame():
     global USE_ASCII
-
     if os.name == 'nt':
         os.system('chcp 65001 > nul')
 
@@ -297,7 +294,7 @@ def MainGame():
             choice = int(user_choose)
         except ValueError:
             print(21*"-")
-            print(f"!!!Invalid choose!!!")
+            print("!!!Invalid choose!!!")
             continue
 
         match choice:
